@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>この色は何番？早押しゲーム</title>
+    
+    <style>
+        /* style.cssの内容をここに統合 */
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+
+        #game-container {
+            width: 360px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            /* ★★★ 変更: clamp()でフォントサイズを可変に ★★★ */
+            font-size: clamp(1.3em, 5.5vw, 1.8em); 
+            color: #0056b3;
+            white-space: nowrap; /* 1行表示の指定はそのまま */
+        }
+
+        h2 {
+            font-size: 1.5em;
+            color: #d9534f;
+        }
+
+        #start-screen {
+            text-align: left;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .score-container {
+            text-align: left;
+        }
+
+        #high-score {
+            font-size: 0.9em;
+            color: #6c757d;
+            margin-bottom: 4px;
+        }
+
+        #score {
+            font-size: 1.2em;
+            color: #0056b3;
+        }
+        
+        #question-area {
+            margin: 10px 0;
+        }
+
+        #color-display {
+            font-size: 2.5em;
+            font-weight: bold;
+            padding: 20px;
+            margin: 10px auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            min-height: 60px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        #feedback {
+            font-size: 1.2em;
+            font-weight: bold;
+            height: 50px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .correct {
+            color: #5cb85c;
+        }
+
+        .incorrect {
+            color: #d9534f;
+        }
+        
+        #new-high-score-message {
+            color: #d9534f;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        #keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        #keypad button {
+            padding: 20px;
+            font-size: 1.5em;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        #keypad button:hover {
+            background-color: #e9ecef;
+        }
+
+        #keypad button:active {
+            transform: scale(0.95);
+        }
+
+        #keypad button[data-number="0"] {
+            grid-column: 2 / 3;
+        }
+
+        button#start-button, button#restart-button {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            color: #fff;
+            background-color: #007bff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button#start-button:hover, button#restart-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* スマートフォン用のレスポンシブ設定 */
+        @media (max-width: 480px) {
+            body {
+                align-items: flex-start;
+                padding-top: 10px;
+                padding-bottom: 20px;
+            }
+
+            #game-container {
+                width: 95%;
+                padding: 10px;
+            }
+
+            h1 {
+                /* font-sizeはclamp()で制御されるため、ここではマージンのみ調整 */
+                margin-top: 5px;
+                margin-bottom: 15px;
+            }
+
+            #status-bar,
+            #question-area {
+                margin-bottom: 10px;
+            }
+            
+            #question-area {
+                margin: 10px 0;
+            }
+
+            #color-display {
+                font-size: 2em;
+                padding: 12px;
+                min-height: auto;
+            }
+
+            #feedback {
+                height: 35px;
+                font-size: 1em;
+                margin-bottom: 10px;
+            }
+
+            #keypad button {
+                padding: 12px;
+                font-size: 1.4em;
+            }
+
+            #keypad {
+                gap: 8px;
+            }
+
+            button#start-button, button#restart-button {
+                padding: 12px;
+                font-size: 1.1em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <h1>この色は何番？早押しゲーム</h1>
+
+        <div id="start-screen">
+            <p>画面に表示される色の番号を、パッドで素早く入力してください。</p>
+            <p>制限時間は60秒。正解で+10点、不正解で-10点です。</p>
+            <button id="start-button">ゲームスタート！</button>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <div id="status-bar">
+                <div class="score-container">
+                    <div id="high-score">本日の最高得点: 0点</div>
+                    <div id="score">スコア: 0点</div>
+                </div>
+                <div id="timer">残り時間: 60秒</div>
+            </div>
+            <div id="question-area">
+                <div id="color-display"></div>
+            </div>
+            <div id="feedback"></div>
+            <div id="keypad">
+                <button data-number="1">1</button>
+                <button data-number="2">2</button>
+                <button data-number="3">3</button>
+                <button data-number="4">4</button>
+                <button data-number="5">5</button>
+                <button data-number="6">6</button>
+                <button data-number="7">7</button>
+                <button data-number="8">8</button>
+                <button data-number="9">9</button>
+                <button data-number="0">0</button>
+            </div>
+        </div>
+
+        <div id="end-screen" class="hidden">
+            <h2>時間切れ！</h2>
+            <p id="final-score"></p>
+            <p id="new-high-score-message" class="hidden"></p>
+            <button id="restart-button">もう一度プレイ</button>
+        </div>
+    </div>
+
+    <script>
+        // script.jsの内容をここに統合
+        document.addEventListener('DOMContentLoaded', () => {
+            const COLOR_CODES = {
+                '黒': { value: 0, hex: '#000000', textColor: '#FFFFFF' }, '茶': { value: 1, hex: '#8B4513', textColor: '#FFFFFF' },
+                '赤': { value: 2, hex: '#FF0000', textColor: '#FFFFFF' }, '橙': { value: 3, hex: '#FFA500', textColor: '#000000' },
+                '黄': { value: 4, hex: '#FFFF00', textColor: '#000000' }, '緑': { value: 5, hex: '#008000', textColor: '#FFFFFF' },
+                '青': { value: 6, hex: '#0000FF', textColor: '#FFFFFF' }, '紫': { value: 7, hex: '#800080', textColor: '#FFFFFF' },
+                '灰': { value: 8, hex: '#808080', textColor: '#FFFFFF' }, '白': { value: 9, hex: '#FFFFFF', textColor: '#000000' }
+            };
+            const TIME_LIMIT = 60;
+            const CORRECT_SCORE = 10;
+            const INCORRECT_SCORE = -10;
+
+            const startScreen = document.getElementById('start-screen');
+            const gameScreen = document.getElementById('game-screen');
+            const endScreen = document.getElementById('end-screen');
+            const startButton = document.getElementById('start-button');
+            const restartButton = document.getElementById('restart-button');
+            const scoreDisplay = document.getElementById('score');
+            const timerDisplay = document.getElementById('timer');
+            const colorDisplay = document.getElementById('color-display');
+            const keypad = document.getElementById('keypad');
+            const feedbackDisplay = document.getElementById('feedback');
+            const finalScoreDisplay = document.getElementById('final-score');
+            const highScoreDisplay = document.getElementById('high-score');
+            const newHighScoreMessage = document.getElementById('new-high-score-message');
+
+            let score = 0;
+            let timeLeft = TIME_LIMIT;
+            let timerId = null;
+            let currentCorrectAnswer = null;
+            const colorNames = Object.keys(COLOR_CODES);
+            let highScore = 0;
+
+            function loadHighScore() {
+                const storedData = localStorage.getItem('resistorGameHighScore');
+                if (storedData) {
+                    try {
+                        const data = JSON.parse(storedData);
+                        const today = new Date().toISOString().slice(0, 10);
+                        if (data.date === today) {
+                            highScore = data.score;
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse high score data:", e);
+                        highScore = 0;
+                    }
+                }
+                highScoreDisplay.textContent = `本日の最高得点: ${highScore}点`;
+            }
+
+            function saveHighScore() {
+                const today = new Date().toISOString().slice(0, 10);
+                const data = {
+                    score: highScore,
+                    date: today
+                };
+                localStorage.setItem('resistorGameHighScore', JSON.stringify(data));
+            }
+
+            function startGame() {
+                clearInterval(timerId);
+                score = 0;
+                timeLeft = TIME_LIMIT;
+                scoreDisplay.textContent = `スコア: ${score}点`;
+                timerDisplay.textContent = `残り時間: ${timeLeft}秒`;
+                feedbackDisplay.textContent = '';
+                newHighScoreMessage.classList.add('hidden');
+                startScreen.classList.add('hidden');
+                endScreen.classList.add('hidden');
+                gameScreen.classList.remove('hidden');
+                runCountdown();
+            }
+
+            function runCountdown() {
+                let countdown = 3;
+                keypad.querySelectorAll('button').forEach(button => button.disabled = true);
+                colorDisplay.style.backgroundColor = '#f8f9fa';
+                colorDisplay.style.color = '#333333';
+                const countdownInterval = setInterval(() => {
+                    if (countdown > 0) {
+                        colorDisplay.textContent = countdown;
+                        countdown--;
+                    } else {
+                        clearInterval(countdownInterval);
+                        keypad.querySelectorAll('button').forEach(button => button.disabled = false);
+                        startMainTimer();
+                        generateNewQuestion();
+                    }
+                }, 1000);
+            }
+
+            function startMainTimer() {
+                timerId = setInterval(() => {
+                    timeLeft--;
+                    timerDisplay.textContent = `残り時間: ${timeLeft}秒`;
+                    if (timeLeft <= 0) {
+                        endGame();
+                    }
+                }, 1000);
+            }
+
+            function endGame() {
+                clearInterval(timerId);
+                gameScreen.classList.add('hidden');
+                endScreen.classList.remove('hidden');
+                finalScoreDisplay.textContent = `最終スコアは ${score} 点でした！`;
+
+                if (score > highScore) {
+                    highScore = score;
+                    highScoreDisplay.textContent = `本日の最高得点: ${highScore}点`;
+                    newHighScoreMessage.textContent = "🎉 本日の最高得点を更新しました！ 🎉";
+                    newHighScoreMessage.classList.remove('hidden');
+                    saveHighScore();
+                }
+            }
+
+            function generateNewQuestion() {
+                const randomColorName = colorNames[Math.floor(Math.random() * colorNames.length)];
+                const colorData = COLOR_CODES[randomColorName];
+                currentCorrectAnswer = colorData.value;
+                colorDisplay.textContent = randomColorName;
+                colorDisplay.style.backgroundColor = colorData.hex;
+                colorDisplay.style.color = colorData.textColor;
+            }
+
+            function checkAnswer(userAnswer) {
+                keypad.querySelectorAll('button').forEach(button => button.disabled = true);
+                feedbackDisplay.classList.remove('correct', 'incorrect');
+                if (userAnswer === currentCorrectAnswer) {
+                    score += CORRECT_SCORE;
+                    feedbackDisplay.textContent = `正解！+${CORRECT_SCORE}点`;
+                    feedbackDisplay.classList.add('correct');
+                } else {
+                    const correctAnswerName = Object.keys(COLOR_CODES).find(key => COLOR_CODES[key].value === currentCorrectAnswer);
+                    score += INCORRECT_SCORE;
+                    feedbackDisplay.textContent = `不正解... ${correctAnswerName}は ${currentCorrectAnswer}`;
+                    feedbackDisplay.classList.add('incorrect');
+                }
+                scoreDisplay.textContent = `スコア: ${score}点`;
+                setTimeout(() => {
+                    feedbackDisplay.textContent = '';
+                    generateNewQuestion();
+                    if (timeLeft > 0) {
+                        keypad.querySelectorAll('button').forEach(button => button.disabled = false);
+                    }
+                }, 800);
+            }
+            
+            startButton.addEventListener('click', startGame);
+            restartButton.addEventListener('click', startGame);
+            keypad.addEventListener('click', (event) => {
+                if (event.target.tagName !== 'BUTTON' || event.target.disabled) return;
+                const userAnswer = parseInt(event.target.dataset.number, 10);
+                checkAnswer(userAnswer);
+            });
+
+            loadHighScore();
+        });
+    </script>
+
+</body>
+</html>
